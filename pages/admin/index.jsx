@@ -1,8 +1,7 @@
 'use client';
-
-import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
-import { useRouter } from "next/router";
+import React, { useEffect, useState } from 'react';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/router';
 
 export default function AdminPage() {
   const { data: session, status } = useSession();
@@ -10,14 +9,18 @@ export default function AdminPage() {
   const [analytics, setAnalytics] = useState(null);
 
   useEffect(() => {
-    if (status === "loading") return;
-    if (!session) return router.replace("/login");
-    if (session.user.role !== "admin") return router.replace("/profile");
+    if (status === 'loading') return;
+    if (!session) return router.replace('/login');
+    if (session.user.role !== 'admin') return router.replace('/profile');
 
     const fetchData = async () => {
-      const res = await fetch("/api/admin/analytics");
-      const data = await res.json();
-      setAnalytics(data);
+      try {
+        const res = await fetch('/api/admin/analytics');
+        const data = await res.json();
+        setAnalytics(data);
+      } catch (err) {
+        console.error('Analytics fetch error:', err);
+      }
     };
     fetchData();
   }, [session, status, router]);
@@ -36,31 +39,29 @@ export default function AdminPage() {
       </h1>
 
       <div className="grid md:grid-cols-3 gap-6">
-        <Card title="Total Sales" value={`$${analytics.totalSales.toFixed(2)}`} />
-        <Card title="Orders" value={analytics.totalOrders} />
-        <Card title="Customers" value={analytics.totalCustomers} />
+        <Card title="Total Sales" value={`$${(analytics.totalSales || 0).toFixed(2)}`} />
+        <Card title="Orders" value={analytics.totalOrders || 0} />
+        <Card title="Customers" value={analytics.totalCustomers || 0} />
       </div>
 
       <div className="mt-10 bg-gray-900 p-6 rounded-xl shadow-xl border border-gray-800">
         <h2 className="text-xl font-bold text-gray-200 mb-4">Recent Orders</h2>
         <ul className="space-y-3">
-          {analytics.recentOrders.map((order) => (
+          {(analytics.recentOrders || []).map((order) => (
             <li
               key={order.id}
               className="bg-gray-800 rounded-lg p-4 flex justify-between"
             >
               <div>
                 <p className="text-gray-300">
-                  Order #{order.id} —{" "}
-                  <span className="text-indigo-400">
-                    {order.user?.email || "Guest"}
-                  </span>
+                  Order #{order.id} —{' '}
+                  <span className="text-indigo-400">{order.user?.email || 'Guest'}</span>
                 </p>
                 <p className="text-gray-500 text-sm">
                   {new Date(order.createdAt).toLocaleString()}
                 </p>
               </div>
-              <p className="text-lg font-semibold">${order.total.toFixed(2)}</p>
+              <p className="text-lg font-semibold">${order.total?.toFixed(2) || 0}</p>
             </li>
           ))}
         </ul>
