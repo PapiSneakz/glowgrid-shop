@@ -1,52 +1,45 @@
-import prisma from "../../../lib/dbconnect";
+// pages/api/admin/analytics.js
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../auth/[...nextauth]";
+import prisma from "../../../lib/dbconnect";
 
 export default async function handler(req, res) {
-  const session = await getServerSession(req, res, authOptions);
+  // Only allow GET requests
+  if (req.method !== "GET") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
 
+  // Check session
+  const session = await getServerSession(req, res, authOptions);
   if (!session || session.user.role !== "admin") {
     return res.status(403).json({ error: "Unauthorized" });
   }
 
   try {
+    // Fetch analytics
+    const totalSalesData = await prisma.order.aggregate({
+      _sum: { total: true },
+    });
+
     const totalOrders = await prisma.order.count();
-    const totalProducts = await prisma.product.count();
-
-    const orders = await prisma.order.findMany({
-      include: {
-        items: { include: { product: true } },
-      },
+    const totalCustomers = await prisma.user.count({
+      where: { role: "user" },
     });
 
-    let totalRevenue = 0;
-    const productSales = {};
-
-    orders.forEach(order => {
-      totalRevenue += order.total;
-      order.items.forEach(item => {
-        const { name, price } = item.product;
-        if (!productSales[name]) {
-          productSales[name] = { quantitySold: 0, revenue: 0 };
-        }
-        productSales[name].quantitySold += item.quantity;
-        productSales[name].revenue += item.quantity * price;
-      });
+    const recentOrders = await prisma.order.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 5,
+      include: { user: true }, // include user email for display
     });
-
-    const topProducts = Object.entries(productSales)
-      .map(([name, data]) => ({ name, ...data }))
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 5);
 
     res.status(200).json({
-      totalRevenue,
+      totalSales: totalSalesData._sum.total || 0,
       totalOrders,
-      totalProducts,
-      topProducts,
+      totalCustomers,
+      recentOrders,
     });
-  } catch (error) {
-    console.error("Error fetching analytics:", error);
-    res.status(500).json({ error: "Failed to load analytics" });
+  } catch (err) {
+    console.error("Analytics fetch error:", err);
+    res.status(500).json({ error: "Failed to fetch analytics" });
   }
 }
