@@ -1,0 +1,2 @@
+import { PrismaClient } from '@prisma/client'; const prisma = new PrismaClient();
+export default async function handler(req, res){ const since = new Date(); since.setDate(since.getDate() - 30); const orders = await prisma.order.findMany({ where: { createdAt: { gte: since } } }); const revenue = orders.reduce((s,o)=> s + Number(o.amount), 0); const ordersCount = orders.length; const topProducts = await prisma.$queryRaw`SELECT name, COUNT(*) as sales FROM "Product" GROUP BY name ORDER BY sales DESC LIMIT 5`; res.json({ revenue, orders: ordersCount, topProducts }); }

@@ -1,0 +1,106 @@
+// ===========================================
+// 🌟 GlowGrid Webshop - Prisma Schema
+// ===========================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===========================================
+// 👤 USERS
+// ===========================================
+model User {
+  id          String    @id @default(cuid())
+  name        String?
+  email       String    @unique
+  password    String
+  role        String    @default("user") // "user" or "admin"
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // 🌍 Personal & shipping info
+  address     String?
+  city        String?
+  state       String?
+  postalCode  String?
+  country     String?
+  phone       String?
+
+  // 🧾 Relations
+  orders      Order[]
+}
+
+// ===========================================
+// 🛍️ PRODUCTS
+// ===========================================
+model Product {
+  id          Int         @id @default(autoincrement())
+  name        String
+  description String?
+  price       Float
+  image       String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // 🗂️ Category relation
+  categoryId  Int?
+  category    Category?   @relation(fields: [categoryId], references: [id])
+
+  // 🧾 Order relation
+  orderItems  OrderItem[]
+}
+
+// ===========================================
+// 🗂️ CATEGORIES
+// ===========================================
+model Category {
+  id        Int        @id @default(autoincrement())
+  name      String
+  products  Product[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+// ===========================================
+// 🧾 ORDERS
+// ===========================================
+model Order {
+  id            Int          @id @default(autoincrement())
+  total         Float
+  status        String        @default("pending")
+  customerEmail String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // 👤 Relation to user (optional for guest checkout)
+  userId        String?
+  user          User?         @relation(fields: [userId], references: [id])
+
+  // 🧩 Items in this order
+  items         OrderItem[]
+
+  // 📦 Shipping info snapshot
+  shippingName     String?
+  shippingAddress  String?
+  shippingCity     String?
+  shippingState    String?
+  shippingPostal   String?
+  shippingCountry  String?
+}
+
+// ===========================================
+// 📦 ORDER ITEMS
+// ===========================================
+model OrderItem {
+  id        Int      @id @default(autoincrement())
+  quantity  Int      @default(1)
+  product   Product  @relation(fields: [productId], references: [id])
+  productId Int
+  order     Order    @relation(fields: [orderId], references: [id])
+  orderId   Int
+}
